@@ -1,0 +1,7 @@
+{
+  "name": "context-composer-monorepo",
+  "workspaces": [
+    "backend",
+    "frontend"
+  ]
+}
