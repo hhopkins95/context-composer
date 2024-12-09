@@ -1,7 +1,10 @@
 {
   "name": "context-composer-monorepo",
   "workspaces": [
-    "backend",
+    "file-server",
     "frontend"
-  ]
+  ],
+  "dependencies": {
+    "stoker": "^1.4.2"
+  }
 }

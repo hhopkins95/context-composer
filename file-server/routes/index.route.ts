@@ -1,11 +1,9 @@
+import * as HTTP_STATUS_CODES from "stoker/http-status-codes";
+import { jsonContent } from "stoker/openapi/helpers";
+import { createMessageObjectSchema } from "stoker/openapi/schemas";
 import { z } from "zod";
-import { HTTP_STATUS_CODES } from "../lib/hono/constants/index.ts";
-import { createRouter } from "../lib/hono/create-base-app.ts";
-import { jsonContent } from "../lib/hono/openapi/helpers/index.ts";
-import { createMessageObjectSchema } from "../lib/hono/openapi/schemas/index.ts";
-import type { AppRouterDef } from "../lib/hono/types.ts";
+import { createRouter } from "../lib/create-app.ts";
 
-// Reference Route
 const router = createRouter()
   .openapi({
     tags: ["Index"], // Group within the OpenAPI doc
@@ -13,7 +11,7 @@ const router = createRouter()
     path: "/",
     request: {
       params: z.object({
-        dirPath: z.string(),
+        dirPath: z.string().optional(),
       }),
     },
     responses: {
@@ -29,4 +27,4 @@ const router = createRouter()
     });
   });
 
-export const indexRouter: AppRouterDef = { router, rootPath: "/" };
+export const indexRouter = router;
