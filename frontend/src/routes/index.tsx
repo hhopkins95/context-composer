@@ -1,5 +1,6 @@
 import * as React from "react";
 import { createFileRoute } from "@tanstack/react-router";
+import MainLayout from "@/components/main-layout";
 
 export const Route = createFileRoute("/")({
   component: HomeComponent,
@@ -7,8 +8,8 @@ export const Route = createFileRoute("/")({
 
 function HomeComponent() {
   return (
-    <div className="p-6 bg-red-500">
-      <h3>Welcome Home!</h3>
-    </div>
+    <main className="min-h-screen">
+      <MainLayout />
+    </main>
   );
 }
