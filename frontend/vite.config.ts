@@ -14,5 +14,11 @@ export default defineConfig({
   server: {
     // @ts-ignore
     port: process.env.FRONTEND_PORT || 9001,
+    proxy: {
+      "/api": {
+        target: `http://localhost:${process.env.BACKEND_PORT || 9000}`,
+        changeOrigin: true,
+      },
+    },
   },
 });

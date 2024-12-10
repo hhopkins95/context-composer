@@ -8,7 +8,7 @@ import { notFound, onError, serveEmojiFavicon } from "stoker/middlewares";
  */
 export const createRouter = () => {
   return new OpenAPIHono<AppBindings>({
-    strict: false,
+    strict: true,
     defaultHook, // Standard way of responding to zod validation errors on any route. TODO -- customize
   });
 };
