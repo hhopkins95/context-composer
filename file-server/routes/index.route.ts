@@ -9,7 +9,6 @@ import { readFile } from "node:fs/promises";
 const router = createRouter()
   // Get Directory Tree
   .openapi({
-    tags: ["Directory"], // Group within the OpenAPI doc
     method: "get",
     path: "/directory",
     request: {
@@ -71,7 +70,6 @@ const router = createRouter()
   })
   // Read a file's contents as text
   .openapi({
-    tags: ["Directory"],
     method: "get",
     path: "/file",
     request: {

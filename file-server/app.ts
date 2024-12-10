@@ -20,3 +20,5 @@ export default {
   port: 1234,
   fetch: app.fetch,
 };
+
+export type RouterType = typeof app;
