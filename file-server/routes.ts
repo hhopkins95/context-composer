@@ -78,7 +78,7 @@ export const indexRouter = new OpenAPIHono() // kkcreateRouter()
       method: "get",
       path: "/file",
       request: {
-        query: z.object({
+        params: z.object({
           path: z.string(),
         }),
       },
@@ -92,7 +92,7 @@ export const indexRouter = new OpenAPIHono() // kkcreateRouter()
       },
     } as const,
     async (c) => {
-      const { path } = c.req.valid("query");
+      const { path } = c.req.valid("param");
       console.log(path);
 
       // Read the file content as UTF-8 text
