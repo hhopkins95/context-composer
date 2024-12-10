@@ -16,8 +16,11 @@ configureAppOpenApi(app, {
 
 app.route("/", indexRouter);
 
+const port = process.env.BACKEND_PORT || 1234;
+console.log("BACKEND_PORT", port);
+
 export default {
-  port: 1234,
+  port,
   fetch: app.fetch,
 };
 
