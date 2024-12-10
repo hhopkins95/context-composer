@@ -6,7 +6,7 @@
   ],
   "private": "true",
   "scripts": {
-    "dev": "bun --env-file=.env concurrently -n 'backend,frontend' -c '#007755,#2f6da3' 'cd file-server && bun dev' 'cd frontend && bun dev'"
+    "dev": "bun --env-file=.env  concurrently -n 'backend,frontend' -c '#007755,#2f6da3' 'cd file-server && bun dev' 'cd frontend && bun dev'"
   },
   "dependencies": {
     "stoker": "^1.4.2"

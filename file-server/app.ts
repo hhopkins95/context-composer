@@ -16,7 +16,7 @@ configureAppOpenApi(app, {
 
 app.route("/", indexRouter);
 
-const port = process.env.BACKEND_PORT || 1234;
+const port = process.env.BACKEND_PORT || 9000;
 console.log("BACKEND_PORT", port);
 
 export default {
