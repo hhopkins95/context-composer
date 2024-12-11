@@ -1,18 +1,31 @@
 import { createContext, useContext, useState } from "react";
 
-export type Node = {
+export interface ContentNode {
   id: string;
-  type: "text" | "file" | "template";
+  type: "text" | "file";
   content: string;
+  fileRef?: {
+    path: string;
+    type: string;
+  };
+}
+
+export interface ContainerNode {
+  id: string;
+  type: "container";
+  format: "xml" | "markdown" | "numbered" | "raw";
+  name: string;
+  description?: string;
   children: Node[];
-  tagName: string;
-};
+}
+
+export type Node = ContentNode | ContainerNode;
 
 interface NodeContextType {
   nodes: Node[];
   selectedNode: Node | null;
   collapsedNodes: Set<string>;
-  addNode: (parentId: string | null) => void;
+  addNode: (parentId: string | null, nodeType: Node["type"]) => void;
   updateNode: (updatedNode: Node) => void;
   deleteNode: (nodeId: string) => void;
   moveNode: (
@@ -31,16 +44,22 @@ export function NodeProvider({ children }: { children: React.ReactNode }) {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
   const [collapsedNodes, setCollapsedNodes] = useState<Set<string>>(new Set());
 
-  const addNode = (parentId: string | null = null) => {
-    console.log("Add node within parent : ", parentId);
+  const addNode = (parentId: string | null = null, nodeType: Node["type"]) => {
+    console.log("aaAdd node within parent:", parentId);
 
-    const newNode: Node = {
-      id: Date.now().toString(),
-      type: "text",
-      content: "",
-      children: [],
-      tagName: "node",
-    };
+    const newNode: Node = nodeType === "container"
+      ? {
+        id: Date.now().toString(),
+        type: "container",
+        format: "xml", // default format
+        name: "new-container",
+        children: [],
+      }
+      : {
+        id: Date.now().toString(),
+        type: nodeType,
+        content: "",
+      };
 
     if (parentId === null) {
       setNodes([...nodes, newNode]);
@@ -48,9 +67,13 @@ export function NodeProvider({ children }: { children: React.ReactNode }) {
       const updateNodeRecursive = (nodes: Node[]): Node[] => {
         return nodes.map((node) => {
           if (node.id === parentId) {
+            if (node.type !== "container") {
+              console.error("Cannot add children to non-container node");
+              return node;
+            }
             return { ...node, children: [...node.children, newNode] };
           }
-          if (node.children.length > 0) {
+          if (node.type === "container" && node.children.length > 0) {
             return { ...node, children: updateNodeRecursive(node.children) };
           }
           return node;
@@ -61,14 +84,14 @@ export function NodeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updateNode = (updatedNode: Node) => {
-    console.log("Update node : ", { values: updatedNode });
+    console.log("Update node:", { values: updatedNode });
 
     const updateNodeRecursive = (nodes: Node[]): Node[] => {
       return nodes.map((node) => {
         if (node.id === updatedNode.id) {
           return updatedNode;
         }
-        if (node.children.length > 0) {
+        if (node.type === "container" && node.children.length > 0) {
           return { ...node, children: updateNodeRecursive(node.children) };
         }
         return node;
@@ -78,14 +101,14 @@ export function NodeProvider({ children }: { children: React.ReactNode }) {
   };
 
   const deleteNode = (nodeId: string) => {
-    console.log("Deleting node : ", nodeId);
+    console.log("Deleting node:", nodeId);
 
     const deleteNodeRecursive = (nodes: Node[]): Node[] => {
       return nodes.filter((node) => {
         if (node.id === nodeId) {
           return false;
         }
-        if (node.children.length > 0) {
+        if (node.type === "container" && node.children.length > 0) {
           return { ...node, children: deleteNodeRecursive(node.children) };
         }
         return true;
@@ -112,7 +135,7 @@ export function NodeProvider({ children }: { children: React.ReactNode }) {
           draggedNode = node;
           return false;
         }
-        if (node.children.length > 0) {
+        if (node.type === "container" && node.children.length > 0) {
           node.children = removeNode(node.children);
         }
         return true;
@@ -128,6 +151,10 @@ export function NodeProvider({ children }: { children: React.ReactNode }) {
       return nodes.map((node) => {
         if (node.id === targetId) {
           if (position === "inside") {
+            if (node.type !== "container") {
+              console.error("Cannot insert inside non-container node");
+              return node;
+            }
             return { ...node, children: [...node.children, draggedNode!] };
           }
           const nodeIndex = nodes.findIndex((n) => n.id === targetId);
@@ -135,7 +162,7 @@ export function NodeProvider({ children }: { children: React.ReactNode }) {
           nodes.splice(insertIndex, 0, draggedNode!);
           return node;
         }
-        if (node.children.length > 0) {
+        if (node.type === "container" && node.children.length > 0) {
           return { ...node, children: insertNode(node.children) };
         }
         return node;

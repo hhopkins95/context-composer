@@ -45,7 +45,10 @@ export default function ContextBuilder() {
               <TabsContent value="editor" className="h-[calc(100%-40px)]">
                 <DndProvider backend={HTML5Backend}>
                   <div className="flex flex-col h-full">
-                    <Button onClick={() => addNode(null)} className="mb-4">
+                    <Button
+                      onClick={() => addNode(null, "container")}
+                      className="mb-4"
+                    >
                       Add Node
                     </Button>
                     <div className="flex gap-4 h-full">
