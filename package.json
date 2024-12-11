@@ -2,7 +2,8 @@
   "name": "context-composer-monorepo",
   "workspaces": [
     "file-server",
-    "frontend"
+    "frontend",
+    "core"
   ],
   "private": "true",
   "scripts": {
