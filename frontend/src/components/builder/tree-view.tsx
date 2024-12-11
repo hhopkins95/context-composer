@@ -1,4 +1,4 @@
-import type { Node } from "./context-builder";
+import type { Node } from "@/contexts/node-context";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -34,7 +34,7 @@ type DragItem = {
   type: string;
 };
 
-const TreeNode = (
+const NodeTree = (
   {
     node,
     level,
@@ -164,7 +164,7 @@ const TreeNode = (
       {!isCollapsed && node.children.length > 0 && (
         <div className="pl-4">
           {node.children.map((childNode) => (
-            <TreeNode
+            <NodeTree
               key={childNode.id}
               node={childNode}
               level={level + 1}
@@ -196,22 +196,28 @@ export default function TreeView(
   return (
     <div className="p-4">
       <h3 className="font-semibold mb-2">Node Structure</h3>
-      <ScrollArea className="h-[calc(100vh-200px)] border rounded">
-        <div className="p-2">
-          {nodes.map((node) => (
-            <TreeNode
-              key={node.id}
-              node={node}
-              level={0}
-              onNodeSelect={onNodeSelect}
-              onAddChild={onAddChild}
-              collapsedNodes={collapsedNodes}
-              onToggleCollapse={onToggleCollapse}
-              onDeleteNode={onDeleteNode}
-              onMoveNode={onMoveNode}
-            />
-          ))}
-        </div>
+      <ScrollArea className="h-full pr-4">
+        {nodes.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <p>No nodes created yet</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {nodes.map((node) => (
+              <NodeTree
+                key={node.id}
+                node={node}
+                level={0}
+                onNodeSelect={onNodeSelect}
+                onAddChild={onAddChild}
+                collapsedNodes={collapsedNodes}
+                onToggleCollapse={onToggleCollapse}
+                onDeleteNode={onDeleteNode}
+                onMoveNode={onMoveNode}
+              />
+            ))}
+          </div>
+        )}
       </ScrollArea>
     </div>
   );

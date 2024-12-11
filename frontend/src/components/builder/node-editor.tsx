@@ -1,4 +1,4 @@
-import type { Node } from "./context-builder";
+import type { Node } from "@/contexts/node-context";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -22,7 +22,11 @@ export default function NodeEditor(
   { node, onUpdate, onDelete }: NodeEditorProps,
 ) {
   if (!node) {
-    return <div className="p-4">Select a node to edit</div>;
+    return (
+      <div className="flex items-center justify-center h-full text-muted-foreground">
+        <p>Select a node to edit its properties</p>
+      </div>
+    );
   }
 
   const handleChange = (field: keyof Node, value: string) => {
@@ -30,27 +34,17 @@ export default function NodeEditor(
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="font-semibold">Node Editor</h3>
-        <Button
-          variant="destructive"
-          size="sm"
-          onClick={() => onDelete(node.id)}
-        >
-          <Trash2 className="w-4 h-4 mr-2" />
-          Delete Node
-        </Button>
-      </div>
+    <div className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="node-type">Type</Label>
+        <Label htmlFor="type">Type</Label>
         <Select
           value={node.type}
-          onValueChange={(value) =>
-            handleChange("type", value as "text" | "file" | "template")}
+          onValueChange={(value: "text" | "file" | "template") =>
+            handleChange("type", value)
+          }
         >
-          <SelectTrigger id="node-type">
-            <SelectValue placeholder="Select node type" />
+          <SelectTrigger id="type">
+            <SelectValue placeholder="Select type" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="text">Text</SelectItem>
@@ -59,24 +53,37 @@ export default function NodeEditor(
           </SelectContent>
         </Select>
       </div>
+
       <div className="space-y-2">
-        <Label htmlFor="node-tag-name">Tag Name</Label>
+        <Label htmlFor="tagName">Tag Name</Label>
         <Input
-          id="node-tag-name"
+          id="tagName"
           value={node.tagName}
           onChange={(e) => handleChange("tagName", e.target.value)}
           placeholder="Enter tag name"
         />
       </div>
+
       <div className="space-y-2">
-        <Label htmlFor="node-content">Content</Label>
+        <Label htmlFor="content">Content</Label>
         <Textarea
-          id="node-content"
+          id="content"
           value={node.content}
           onChange={(e) => handleChange("content", e.target.value)}
-          placeholder="Enter node content"
+          placeholder="Enter content"
           className="min-h-[100px]"
         />
+      </div>
+
+      <div className="pt-4 flex justify-end space-x-2">
+        <Button
+          variant="destructive"
+          size="sm"
+          onClick={() => onDelete(node.id)}
+        >
+          <Trash2 className="w-4 h-4 mr-2" />
+          Delete Node
+        </Button>
       </div>
     </div>
   );

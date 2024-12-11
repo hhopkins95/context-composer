@@ -14,7 +14,7 @@ export const indexRouter = new OpenAPIHono() // kkcreateRouter()
       method: "get",
       path: "/directory",
       request: {
-        params: z.object({
+        query: z.object({
           path: z.string(),
           fileExtensions: z.string().array().default([
             ".md",
@@ -47,9 +47,7 @@ export const indexRouter = new OpenAPIHono() // kkcreateRouter()
       },
     } as const,
     async (c) => {
-      const { path: dirPath, fileExtensions } = c.req.valid("param");
-      console.log(dirPath, fileExtensions);
-
+      const { path: dirPath, fileExtensions } = c.req.valid("query");
       const res = await readdir(dirPath, {
         withFileTypes: true,
         recursive: false, // true,
@@ -57,6 +55,7 @@ export const indexRouter = new OpenAPIHono() // kkcreateRouter()
       const filePaths = res
         .filter((file) => {
           if (!file.isFile()) return false;
+          if (file.name.startsWith(".")) return false;
           const ext = "." + file.name.split(".").pop();
           return fileExtensions.includes(ext);
         })
@@ -64,7 +63,7 @@ export const indexRouter = new OpenAPIHono() // kkcreateRouter()
 
       const subDirs = res.filter((file) => file.isDirectory()).map((file) =>
         file.name
-      );
+      ).filter((dir) => !dir.startsWith("."));
 
       return c.json({
         files: filePaths,
@@ -78,7 +77,7 @@ export const indexRouter = new OpenAPIHono() // kkcreateRouter()
       method: "get",
       path: "/file",
       request: {
-        params: z.object({
+        query: z.object({
           path: z.string(),
         }),
       },
@@ -92,7 +91,7 @@ export const indexRouter = new OpenAPIHono() // kkcreateRouter()
       },
     } as const,
     async (c) => {
-      const { path } = c.req.valid("param");
+      const { path } = c.req.valid("query");
       console.log(path);
 
       // Read the file content as UTF-8 text

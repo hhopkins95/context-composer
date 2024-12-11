@@ -1,9 +1,13 @@
-'use client'
+"use client";
 
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@/components/ui/resizable"
-import { Button } from "@/components/ui/button"
-import FileExplorer from './file-explorer'
-import ContextBuilder from './context-builder'
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@/components/ui/resizable";
+import { Button } from "@/components/ui/button";
+import FileExplorer from "./file-explorer";
+import ContextBuilder from "./builder/context-builder";
 
 export default function MainLayout() {
   return (
@@ -35,6 +39,5 @@ export default function MainLayout() {
         <div>Ready</div>
       </footer>
     </div>
-  )
+  );
 }
-
