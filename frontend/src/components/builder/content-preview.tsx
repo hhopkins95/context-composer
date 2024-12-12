@@ -1,7 +1,7 @@
 import {
   type ContainerNode,
   type Node,
-  useNodes,
+  usePromptBuilderContext,
 } from "@/contexts/node-context";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -48,7 +48,8 @@ const renderNodeContent = (node: Node): string => {
 };
 
 export default function ContentPreview() {
-  const { nodes, collapsedNodes, toggleNodeCollapse } = useNodes();
+  const { nodes, collapsedNodes, toggleNodeCollapse } =
+    usePromptBuilderContext();
 
   const renderNode = (node: Node, level: number = 0) => {
     const isCollapsed = collapsedNodes.has(node.id);

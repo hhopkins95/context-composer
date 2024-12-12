@@ -1,7 +1,7 @@
 import * as React from "react";
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
-import { NodeProvider } from "@/contexts/node-context";
+import { PromptBuilderProvider } from "@/contexts/node-context";
 
 export const Route = createRootRoute({
   component: RootComponent,
@@ -10,10 +10,10 @@ export const Route = createRootRoute({
 function RootComponent() {
   return (
     <>
-      <NodeProvider>
+      <PromptBuilderProvider>
         <Outlet />
         <TanStackRouterDevtools position="bottom-right" />
-      </NodeProvider>
+      </PromptBuilderProvider>
     </>
   );
 }

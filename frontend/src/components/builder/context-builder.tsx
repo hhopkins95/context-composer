@@ -11,7 +11,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { useNodes } from "@/contexts/node-context";
+import { usePromptBuilderContext } from "@/contexts/node-context";
 
 export default function ContextBuilder() {
   const {
@@ -24,7 +24,7 @@ export default function ContextBuilder() {
     moveNode,
     setSelectedNode,
     toggleNodeCollapse,
-  } = useNodes();
+  } = usePromptBuilderContext();
 
   const [activeTab, setActiveTab] = useState("editor");
 
