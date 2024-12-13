@@ -14,18 +14,7 @@ import {
 import { usePromptBuilderContext } from "@/contexts/builder-context/node-context";
 
 export default function ContextBuilder() {
-  const {
-    nodes,
-    selectedNode,
-    collapsedNodes,
-    addNode,
-    updateNode,
-    deleteNode,
-    moveNode,
-    setSelectedNode,
-    toggleNodeCollapse,
-  } = usePromptBuilderContext();
-
+  const { addContainer } = usePromptBuilderContext();
   const [activeTab, setActiveTab] = useState("editor");
 
   return (
@@ -46,7 +35,7 @@ export default function ContextBuilder() {
                 <DndProvider backend={HTML5Backend}>
                   <div className="flex flex-col h-full">
                     <Button
-                      onClick={() => addNode(null, "container")}
+                      onClick={() => addContainer({ position: "inside" })}
                       className="mb-4"
                     >
                       Add Node
@@ -57,15 +46,7 @@ export default function ContextBuilder() {
                           <h2 className="font-semibold">Node Tree</h2>
                         </div>
                         <div className="p-4">
-                          <TreeView
-                            nodes={nodes}
-                            onNodeSelect={setSelectedNode}
-                            onAddChild={addNode}
-                            collapsedNodes={collapsedNodes}
-                            onToggleCollapse={toggleNodeCollapse}
-                            onDeleteNode={deleteNode}
-                            onMoveNode={moveNode}
-                          />
+                          <TreeView />
                         </div>
                       </div>
                       <div className="w-1/2 border rounded-lg shadow-sm bg-card">
@@ -73,11 +54,7 @@ export default function ContextBuilder() {
                           <h2 className="font-semibold">Node Properties</h2>
                         </div>
                         <div className="p-4">
-                          <NodeEditor
-                            node={selectedNode}
-                            onUpdate={updateNode}
-                            onDelete={deleteNode}
-                          />
+                          <NodeEditor />
                         </div>
                       </div>
                     </div>
@@ -91,15 +68,7 @@ export default function ContextBuilder() {
                       <h2 className="font-semibold">Node Tree</h2>
                     </div>
                     <div className="p-4">
-                      <TreeView
-                        nodes={nodes}
-                        onNodeSelect={setSelectedNode}
-                        onAddChild={addNode}
-                        collapsedNodes={collapsedNodes}
-                        onToggleCollapse={toggleNodeCollapse}
-                        onDeleteNode={deleteNode}
-                        onMoveNode={moveNode}
-                      />
+                      <TreeView />
                     </div>
                   </div>
                 </DndProvider>

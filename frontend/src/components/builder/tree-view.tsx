@@ -2,11 +2,12 @@ import type {
   ContainerNode,
   ContentNode,
   Node,
-} from "@/contexts/builder-context/node-context";
+} from "@/contexts/builder-context/types";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDrag, useDrop } from "react-dnd";
+import { usePromptBuilderContext } from "@/contexts/builder-context/node-context";
 
 type TreeViewProps = {
   nodes: Node[];
@@ -43,9 +44,9 @@ const getNodeIcon = (node: Node) => {
     switch (node.format) {
       case "xml":
         return "🔳";
-      case "markdown":
+      case "md":
         return "📑";
-      case "numbered":
+      case "numbered-md":
         return "📝";
       case "raw":
         return "📄";
@@ -53,7 +54,7 @@ const getNodeIcon = (node: Node) => {
         return "📦";
     }
   }
-  return node.type === "file" ? "📁" : "📄";
+  return "📄";
 };
 
 const getNodePreview = (node: Node) => {
@@ -66,28 +67,22 @@ const getNodePreview = (node: Node) => {
 const NodeTree = ({
   node,
   level,
-  onNodeSelect,
-  onAddChild,
-  collapsedNodes,
-  onToggleCollapse,
-  onDeleteNode,
-  onMoveNode,
 }: {
   node: Node;
   level: number;
-  onNodeSelect: (node: Node) => void;
-  onAddChild: (parentId: string, nodeType: Node["type"]) => void;
-  collapsedNodes: Set<string>;
-  onToggleCollapse: (nodeId: string) => void;
-  onDeleteNode: (nodeId: string) => void;
-  onMoveNode: (
-    draggedId: string,
-    targetId: string,
-    position: "before" | "after" | "inside",
-  ) => void;
 }) => {
+  const {
+    expandedNodeIds,
+    toggleNodeCollapse,
+    selectNode,
+    addContainer,
+    addTextNode,
+    deleteNode,
+    moveNode,
+  } = usePromptBuilderContext();
+
   const colorClass = colors[level % colors.length];
-  const isCollapsed = collapsedNodes.has(node.id);
+  const isCollapsed = !expandedNodeIds.has(node.id);
   const isContainer = node.type === "container";
 
   const [{ isDragging }, drag] = useDrag(() => ({
@@ -118,11 +113,11 @@ const NodeTree = ({
       const hoverClientY = clientOffset.y - hoverBoundingRect.top;
 
       if (hoverClientY < hoverMiddleY / 2) {
-        onMoveNode(draggedId, targetId, "before");
+        moveNode(draggedId, { id: targetId, position: "before" });
       } else if (hoverClientY > hoverMiddleY * 1.5) {
-        onMoveNode(draggedId, targetId, "after");
+        moveNode(draggedId, { id: targetId, position: "after" });
       } else if (isContainer) {
-        onMoveNode(draggedId, targetId, "inside");
+        moveNode(draggedId, { id: targetId, position: "inside" });
       }
     },
     collect: (monitor) => ({
@@ -151,14 +146,14 @@ const NodeTree = ({
             size="sm"
             variant="ghost"
             className="p-0 h-6 w-6"
-            onClick={() => onToggleCollapse(node.id)}
+            onClick={() => toggleNodeCollapse(node.id)}
           >
             {isCollapsed
               ? <ChevronRight className="w-4 h-4" />
               : <ChevronDown className="w-4 h-4" />}
           </Button>
         )}
-        <span onClick={() => onNodeSelect(node)}>
+        <span onClick={() => selectNode(node.id)}>
           {getNodeIcon(node)} {getNodePreview(node)}
         </span>
         {isContainer && (
@@ -167,8 +162,7 @@ const NodeTree = ({
             variant="ghost"
             onClick={(e) => {
               e.stopPropagation();
-              // Default to adding a text node
-              onAddChild(node.id, "text");
+              addTextNode({ id: node.id, position: "inside" });
             }}
           >
             <Plus className="w-4 h-4" />
@@ -179,7 +173,7 @@ const NodeTree = ({
           variant="ghost"
           onClick={(e) => {
             e.stopPropagation();
-            onDeleteNode(node.id);
+            deleteNode(node.id);
           }}
         >
           <Trash2 className="w-4 h-4" />
@@ -193,12 +187,6 @@ const NodeTree = ({
               key={childNode.id}
               node={childNode}
               level={level + 1}
-              onNodeSelect={onNodeSelect}
-              onAddChild={onAddChild}
-              collapsedNodes={collapsedNodes}
-              onToggleCollapse={onToggleCollapse}
-              onDeleteNode={onDeleteNode}
-              onMoveNode={onMoveNode}
             />
           ))}
         </div>
@@ -207,15 +195,9 @@ const NodeTree = ({
   );
 };
 
-export default function TreeView({
-  nodes,
-  onNodeSelect,
-  onAddChild,
-  collapsedNodes,
-  onToggleCollapse,
-  onDeleteNode,
-  onMoveNode,
-}: TreeViewProps) {
+export default function TreeView() {
+  const { nodes } = usePromptBuilderContext();
+
   return (
     <div className="p-4">
       <h3 className="font-semibold mb-2">Node Structure</h3>
@@ -233,12 +215,6 @@ export default function TreeView({
                   key={node.id}
                   node={node}
                   level={0}
-                  onNodeSelect={onNodeSelect}
-                  onAddChild={onAddChild}
-                  collapsedNodes={collapsedNodes}
-                  onToggleCollapse={onToggleCollapse}
-                  onDeleteNode={onDeleteNode}
-                  onMoveNode={onMoveNode}
                 />
               ))}
             </div>

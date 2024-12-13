@@ -2,7 +2,7 @@ import type {
   ContainerNode,
   ContentNode,
   Node,
-} from "@/contexts/builder-context/node-context";
+} from "@/contexts/builder-context/types";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {
@@ -15,16 +15,20 @@ import {
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Trash2 } from "lucide-react";
+import { usePromptBuilderContext } from "@/contexts/builder-context/node-context";
 
-type NodeEditorProps = {
-  node: Node | null;
-  onUpdate: (node: Node) => void;
-  onDelete: (nodeId: string) => void;
-};
+export default function NodeEditor() {
+  const {
+    selectedNodeId,
+    findNode,
+    updateContainer,
+    updateContent,
+    deleteNode,
+  } = usePromptBuilderContext();
 
-export default function NodeEditor(
-  { node, onUpdate, onDelete }: NodeEditorProps,
-) {
+  const nodeInfo = selectedNodeId ? findNode(selectedNodeId) : null;
+  const node = nodeInfo?.node ?? null;
+
   if (!node) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground">
@@ -35,12 +39,9 @@ export default function NodeEditor(
 
   const isContainer = node.type === "container";
 
-  const handleContentNodeChange = (
-    field: keyof ContentNode,
-    value: string,
-  ) => {
+  const handleContentNodeChange = (field: keyof ContentNode, value: string) => {
     if (node.type === "container") return;
-    onUpdate({ ...node, [field]: value });
+    updateContent(node.id, { [field]: value });
   };
 
   const handleContainerNodeChange = (
@@ -48,46 +49,11 @@ export default function NodeEditor(
     value: string,
   ) => {
     if (node.type !== "container") return;
-    onUpdate({ ...node, [field]: value });
-  };
-
-  const handleTypeChange = (newType: "text" | "file" | "container") => {
-    if (newType === "container") {
-      onUpdate({
-        ...node,
-        type: "container",
-        format: "xml",
-        name: "new-container",
-        children: [],
-      } as ContainerNode);
-    } else {
-      onUpdate({
-        ...node,
-        type: newType,
-        content: "",
-      } as ContentNode);
-    }
+    updateContainer(node.id, { [field]: value });
   };
 
   return (
     <div className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="type">Type</Label>
-        <Select
-          value={node.type}
-          onValueChange={handleTypeChange}
-        >
-          <SelectTrigger id="type">
-            <SelectValue placeholder="Select type" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="text">Text</SelectItem>
-            <SelectItem value="file">File</SelectItem>
-            <SelectItem value="container">Container</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       {isContainer
         ? (
           <>
@@ -103,8 +69,8 @@ export default function NodeEditor(
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="xml">XML</SelectItem>
-                  <SelectItem value="markdown">Markdown</SelectItem>
-                  <SelectItem value="numbered">Numbered List</SelectItem>
+                  <SelectItem value="md">Markdown</SelectItem>
+                  <SelectItem value="numbered-md">Numbered Markdown</SelectItem>
                   <SelectItem value="raw">Raw</SelectItem>
                 </SelectContent>
               </Select>
@@ -134,44 +100,24 @@ export default function NodeEditor(
           </>
         )
         : (
-          <>
-            <div className="space-y-2">
-              <Label htmlFor="content">Content</Label>
-              <Textarea
-                id="content"
-                value={(node as ContentNode).content}
-                onChange={(e) =>
-                  handleContentNodeChange("content", e.target.value)}
-                placeholder="Enter content"
-                className="min-h-[100px]"
-              />
-            </div>
-            {node.type === "file" && (
-              <div className="space-y-2">
-                <Label htmlFor="filePath">File Path</Label>
-                <Input
-                  id="filePath"
-                  value={(node as ContentNode).fileRef?.path || ""}
-                  onChange={(e) =>
-                    handleContentNodeChange(
-                      "fileRef",
-                      JSON.stringify({
-                        path: e.target.value,
-                        type: (node as ContentNode).fileRef?.type || "text",
-                      }),
-                    )}
-                  placeholder="Enter file path"
-                />
-              </div>
-            )}
-          </>
+          <div className="space-y-2">
+            <Label htmlFor="content">Content</Label>
+            <Textarea
+              id="content"
+              value={(node as ContentNode).content}
+              onChange={(e) =>
+                handleContentNodeChange("content", e.target.value)}
+              placeholder="Enter content"
+              className="min-h-[100px]"
+            />
+          </div>
         )}
 
       <div className="pt-4 flex justify-end space-x-2">
         <Button
           variant="destructive"
           size="sm"
-          onClick={() => onDelete(node.id)}
+          onClick={() => deleteNode(node.id)}
         >
           <Trash2 className="w-4 h-4 mr-2" />
           Delete Node

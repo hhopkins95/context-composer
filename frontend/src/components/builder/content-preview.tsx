@@ -1,11 +1,11 @@
 import {
   type ContainerNode,
   type Node,
-  usePromptBuilderContext,
-} from "@/contexts/builder-context/node-context";
+} from "@/contexts/builder-context/types";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { usePromptBuilderContext } from "@/contexts/builder-context/node-context";
 
 const colors = [
   "text-red-500",
@@ -18,41 +18,12 @@ const colors = [
   "text-orange-500",
 ];
 
-const renderNodeContent = (node: Node): string => {
-  if (node.type === "container") {
-    const containerNode = node as ContainerNode;
-    switch (containerNode.format) {
-      case "xml":
-        return `<${containerNode.name}>${
-          containerNode.children
-            .map(renderNodeContent)
-            .join("")
-        }</${containerNode.name}>`;
-      case "markdown":
-        return `# ${containerNode.name}\n${
-          containerNode.children
-            .map(renderNodeContent)
-            .join("\n")
-        }`;
-      case "numbered":
-        return containerNode.children
-          .map((child, index) => `${index + 1}. ${renderNodeContent(child)}`)
-          .join("\n");
-      case "raw":
-        return containerNode.children.map(renderNodeContent).join("");
-      default:
-        return "";
-    }
-  }
-  return node.content || "";
-};
-
 export default function ContentPreview() {
-  const { nodes, collapsedNodes, toggleNodeCollapse } =
+  const { nodes, expandedNodeIds, toggleNodeCollapse, outputString } =
     usePromptBuilderContext();
 
   const renderNode = (node: Node, level: number = 0) => {
-    const isCollapsed = collapsedNodes.has(node.id);
+    const isCollapsed = !expandedNodeIds.has(node.id);
     const color = colors[level % colors.length];
     const isContainer = node.type === "container";
 
@@ -72,7 +43,9 @@ export default function ContentPreview() {
             </Button>
           )}
           <pre className={`${color} whitespace-pre-wrap`}>
-            {renderNodeContent(node)}
+            {node.type === "container"
+              ? `${(node as ContainerNode).name}`
+              : node.content}
           </pre>
         </div>
         {!isCollapsed && isContainer &&
@@ -90,7 +63,10 @@ export default function ContentPreview() {
   return (
     <ScrollArea className="h-full">
       <div className="space-y-2 p-2">
-        {nodes.map((node) => renderNode(node))}
+        <div className="mb-4 p-2 bg-muted rounded">
+          <pre className="whitespace-pre-wrap">{outputString}</pre>
+        </div>
+        {/* {nodes.map((node) => renderNode(node))} */}
       </div>
     </ScrollArea>
   );
