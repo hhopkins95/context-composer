@@ -70,11 +70,15 @@ function usePromptBuilderContextLogic() {
     setNodes((prev) => insertNode(prev, target, newNode));
   };
 
-  const addTextNode = (target: InsertTarget) => {
+  const addTextNode = (
+    target: InsertTarget,
+    initialContent?: Partial<ContentNode>,
+  ) => {
     const newNode: ContentNode = {
       id: crypto.randomUUID(),
       type: "text",
       content: "",
+      ...initialContent,
     };
     setNodes((prev) => insertNode(prev, target, newNode));
   };

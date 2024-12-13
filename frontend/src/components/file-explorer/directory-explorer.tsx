@@ -1,19 +1,169 @@
-import React, { useState } from "react";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import React, { useEffect, useState } from "react";
+import { ScrollArea } from "../ui/scroll-area";
+import { File, Folder, Tree, type TreeViewElement } from "../ui/file-tree";
+import { useDirectoryContents } from "../../lib/hooks/useDirectory";
+import type { DirectoryResponse } from "../../lib/hooks/useDirectory";
+import { Button } from "../ui/button";
 import {
-  File,
-  Folder,
-  Tree,
-  type TreeViewElement,
-} from "@/components/ui/file-tree";
-import { useDirectoryContents } from "@/lib/hooks/useDirectory";
-import type { DirectoryResponse } from "@/lib/hooks/useDirectory";
-import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+  ChevronUp,
+  Folder as FolderIcon,
+  FolderOpen,
+  Trash2,
+} from "lucide-react";
+import { useDrag } from "react-dnd";
+import { api } from "../../lib/api";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
 
 interface DirectoryExplorerProps {
   className?: string;
+}
+
+interface DirectoryPickerDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSelect: (path: string) => void;
+}
+
+function DirectoryPickerDialog(
+  { open, onOpenChange, onSelect }: DirectoryPickerDialogProps,
+) {
+  // Let the server determine the starting path (home directory)
+  const [currentPath, setCurrentPath] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ["directory", "parent", currentPath],
+    queryFn: async () => {
+      try {
+        const response = await api.api.directory.parent.$get({
+          query: currentPath ? { path: currentPath } : {},
+        });
+        if (!response.ok) {
+          throw new Error("Failed to access directory");
+        }
+        setError(null);
+        return response.json();
+      } catch (err) {
+        setError(
+          err instanceof Error ? err.message : "Failed to access directory",
+        );
+        // Return null to indicate error state
+        return null;
+      }
+    },
+    enabled: open,
+    // Prevent automatic retries on error
+    retry: false,
+  });
+
+  const handleSelect = () => {
+    if (!error && data?.currentPath) {
+      onSelect(data.currentPath);
+      onOpenChange(false);
+    }
+  };
+
+  const handleParentClick = () => {
+    if (data?.parentPath) {
+      setCurrentPath(data.parentPath);
+      setError(null);
+    }
+  };
+
+  // If we have an error but previous data exists, use it
+  const displayData = error ? null : data;
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[500px]">
+        <DialogHeader>
+          <DialogTitle>Select Directory</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex items-center gap-2 mb-4">
+          <div className="flex-1 p-2 bg-muted rounded-md text-sm truncate">
+            {displayData?.currentPath ?? ""}
+          </div>
+          {displayData?.parentPath && (
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={handleParentClick}
+            >
+              <ChevronUp className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
+
+        <div className="border rounded-md">
+          <ScrollArea className="h-[300px] w-full">
+            <div className="p-4">
+              {isLoading
+                ? (
+                  <div className="flex items-center justify-center h-full">
+                    Loading...
+                  </div>
+                )
+                : error
+                ? (
+                  <div className="space-y-4">
+                    <div className="text-destructive text-sm">{error}</div>
+                    {displayData?.parentPath && (
+                      <Button
+                        variant="outline"
+                        onClick={handleParentClick}
+                        className="w-full"
+                      >
+                        <ChevronUp className="h-4 w-4 mr-2" />
+                        Go Up
+                      </Button>
+                    )}
+                  </div>
+                )
+                : (
+                  <div className="space-y-2">
+                    {displayData?.dirs.map((dir) => (
+                      <button
+                        key={dir.path}
+                        className="flex items-center gap-2 w-full p-2 hover:bg-accent rounded-md text-left"
+                        onClick={() => setCurrentPath(dir.path)}
+                        onDoubleClick={handleSelect}
+                      >
+                        <FolderIcon className="h-4 w-4" />
+                        <span>{dir.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+            </div>
+          </ScrollArea>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSelect} disabled={!!error}>
+            Select Directory
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 /**
@@ -43,20 +193,43 @@ function transformToTree(
 }
 
 /**
+ * A draggable file component that wraps the base File component
+ */
+function DraggableFile(
+  { value, children }: { value: string; children: React.ReactNode },
+) {
+  const [{ isDragging }, drag] = useDrag(() => ({
+    type: "FILE",
+    item: {
+      type: "FILE",
+      path: value,
+      name: value.split("/").pop() || value,
+      fileType: value.split(".").pop() || "txt",
+    },
+    collect: (monitor) => ({
+      isDragging: !!monitor.isDragging(),
+    }),
+  }), [value]);
+
+  return (
+    <div ref={drag} style={{ opacity: isDragging ? 0.5 : 1 }}>
+      <File value={value}>
+        {children}
+      </File>
+    </div>
+  );
+}
+
+/**
  * A folder component that fetches its own data on expansion.
  */
 function FolderWithQuery({ path, name }: { path: string; name: string }) {
-  const { data, isLoading, error, refetch } = useDirectoryContents(path);
-
-  const handleToggle = () => {
-    // Fetch the directory contents when expanding
-    refetch();
-  };
+  const { data, isLoading, error } = useDirectoryContents(path);
 
   const treeData = data ? transformToTree(data, path) : [];
 
   return (
-    <Folder element={name} value={path} onClick={handleToggle}>
+    <Folder element={name} value={path}>
       {isLoading && <div>Loading...</div>}
       {error && <div>Error loading directory</div>}
       {treeData.length > 0 && (
@@ -64,16 +237,17 @@ function FolderWithQuery({ path, name }: { path: string; name: string }) {
           {treeData.map((element) => {
             if (element.children == undefined) {
               return (
-                <File
+                <DraggableFile
                   key={element.id}
                   value={element.id}
                 >
                   <p>{element.name}</p>
-                </File>
+                </DraggableFile>
               );
             }
             return (
               <FolderWithQuery
+                key={element.id}
                 path={element.id}
                 name={element.name}
               />
@@ -86,62 +260,102 @@ function FolderWithQuery({ path, name }: { path: string; name: string }) {
 }
 
 export function DirectoryExplorer({ className }: DirectoryExplorerProps) {
-  const [directoryPath, setDirectoryPath] = useState("");
+  const [directories, setDirectories] = useState<string[]>(() => {
+    const saved = localStorage.getItem("explorer-directories");
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [selectedDirectory, setSelectedDirectory] = useState<string>(() => {
+    const saved = localStorage.getItem("explorer-selected-directory");
+    return saved || "";
+  });
+  const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  const { isLoading, error, refetch, data } = useDirectoryContents(
-    directoryPath,
-  );
+  // Get initial directory contents
+  const { data, isLoading, error } = useDirectoryContents(selectedDirectory);
 
-  const handleSearch = () => {
-    if (directoryPath.trim()) {
-      refetch();
+  // Save directories to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem("explorer-directories", JSON.stringify(directories));
+  }, [directories]);
+
+  // Save selected directory to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem("explorer-selected-directory", selectedDirectory);
+  }, [selectedDirectory]);
+
+  const handleDirectorySelect = (path: string) => {
+    if (!directories.includes(path)) {
+      setDirectories([...directories, path]);
+    }
+    setSelectedDirectory(path);
+  };
+
+  const handleRemoveDirectory = (path: string) => {
+    const newDirectories = directories.filter((d) => d !== path);
+    setDirectories(newDirectories);
+    if (selectedDirectory === path) {
+      setSelectedDirectory(newDirectories[0] || "");
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === "Enter") {
-      handleSearch();
-    }
-  };
-
-  const treeData = data ? transformToTree(data, directoryPath) : [];
+  const treeData = data ? transformToTree(data, selectedDirectory) : [];
 
   return (
     <div className={`h-full flex flex-col ${className}`}>
       <div className="flex gap-2 mb-2">
-        <Input
-          type="text"
-          placeholder="Enter directory path..."
-          value={directoryPath}
-          onChange={(e) => setDirectoryPath(e.target.value)}
-          onKeyDown={handleKeyDown}
-        />
+        <Select value={selectedDirectory} onValueChange={setSelectedDirectory}>
+          <SelectTrigger className="flex-1">
+            <SelectValue placeholder="Select a directory" />
+          </SelectTrigger>
+          <SelectContent>
+            {directories.map((dir) => (
+              <div key={dir} className="flex items-center justify-between px-2">
+                <SelectItem value={dir}>
+                  {dir.split("/").pop() || dir}
+                </SelectItem>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-6 w-6"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleRemoveDirectory(dir);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+          </SelectContent>
+        </Select>
         <Button
           variant="secondary"
           size="icon"
-          onClick={handleSearch}
-          disabled={isLoading || !directoryPath.trim()}
+          onClick={() => setIsPickerOpen(true)}
+          title="Add Directory"
         >
-          <Search className="h-4 w-4" />
+          <FolderOpen className="h-4 w-4" />
         </Button>
       </div>
       <ScrollArea className="flex-1">
+        {isLoading && <div>Loading...</div>}
         {error && <div>Error loading directory</div>}
         {treeData.length > 0 && (
           <Tree className="p-2 overflow-hidden rounded-md bg-background">
             {treeData.map((element) => {
               if (element.children == undefined) {
                 return (
-                  <File
+                  <DraggableFile
                     key={element.id}
                     value={element.id}
                   >
                     <p>{element.name}</p>
-                  </File>
+                  </DraggableFile>
                 );
               }
               return (
                 <FolderWithQuery
+                  key={element.id}
                   path={element.id}
                   name={element.name}
                 />
@@ -150,6 +364,12 @@ export function DirectoryExplorer({ className }: DirectoryExplorerProps) {
           </Tree>
         )}
       </ScrollArea>
+
+      <DirectoryPickerDialog
+        open={isPickerOpen}
+        onOpenChange={setIsPickerOpen}
+        onSelect={handleDirectorySelect}
+      />
     </div>
   );
 }

@@ -24,10 +24,19 @@ import {
 } from "../../components/ui/select";
 import { Textarea } from "../../components/ui/textarea";
 
-type DragItem = {
+type NodeDragItem = {
     id: string;
-    type: string;
+    type: "NODE";
 };
+
+type FileDragItem = {
+    type: "FILE";
+    path: string;
+    name: string;
+    fileType: string;
+};
+
+type DragItem = NodeDragItem | FileDragItem;
 
 const nodeStyles = {
     container: {
@@ -137,7 +146,7 @@ const NodeItem = ({
         item: () => {
             console.log("Starting drag for node:", {
                 id: node.id,
-                type: node.type,
+                type: "NODE",
                 exists: !!allNodes.find((n) => n.id === node.id),
             });
             return { id: node.id, type: "NODE" };
@@ -152,10 +161,18 @@ const NodeItem = ({
 
     // Skip drop handling if this is the node being dragged
     const [{ isOver, isOverCurrent }, drop] = useDrop(() => ({
-        accept: "NODE",
-        canDrop: (item: DragItem) => item.id !== node.id,
+        accept: ["NODE", "FILE"],
+        canDrop: (item: DragItem) => {
+            if (item.type === "NODE") {
+                return item.id !== node.id;
+            }
+            return true;
+        },
         hover: (item: DragItem, monitor) => {
-            if (!monitor.isOver({ shallow: true }) || item.id === node.id) {
+            if (!monitor.isOver({ shallow: true })) {
+                return;
+            }
+            if (item.type === "NODE" && item.id === node.id) {
                 return;
             }
 
@@ -186,14 +203,31 @@ const NodeItem = ({
             }
         },
         drop: (item: DragItem, monitor) => {
-            if (!monitor.isOver({ shallow: true }) || item.id === node.id) {
+            if (!monitor.isOver({ shallow: true })) {
                 return;
             }
-
-            moveNode(item.id, {
-                id: node.id,
-                position: dropPosition || "after",
-            });
+            if (item.type === "NODE") {
+                if (item.id === node.id) return;
+                moveNode(item.id, {
+                    id: node.id,
+                    position: dropPosition || "after",
+                });
+            } else if (item.type === "FILE") {
+                // Create a new content node with file reference
+                addTextNode(
+                    {
+                        id: node.id,
+                        position: dropPosition || "after",
+                    },
+                    {
+                        content: `File: ${item.name}`,
+                        fileRef: {
+                            path: item.path,
+                            type: item.fileType,
+                        },
+                    },
+                );
+            }
 
             setDropPosition(null);
         },
@@ -399,7 +433,7 @@ const NodeItem = ({
 };
 
 export default function UnifiedNodeEditor() {
-    const { nodes, moveNode } = usePromptBuilderContext();
+    const { nodes, addTextNode, moveNode } = usePromptBuilderContext();
     const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(
         null,
     );
@@ -408,7 +442,7 @@ export default function UnifiedNodeEditor() {
 
     // Handle drops at the root level
     const [{ isOver }, drop] = useDrop(() => ({
-        accept: "NODE",
+        accept: ["NODE", "FILE"],
         hover: (item: DragItem, monitor) => {
             if (!rootRef.current) return;
 
@@ -433,8 +467,22 @@ export default function UnifiedNodeEditor() {
         drop: (item: DragItem, monitor) => {
             if (!dropPosition) return;
 
-            // Move to root level (no target id)
-            moveNode(item.id, { position: dropPosition });
+            if (item.type === "NODE") {
+                // Move to root level (no target id)
+                moveNode(item.id, { position: dropPosition });
+            } else if (item.type === "FILE") {
+                // Create a new content node with file reference at root level
+                addTextNode(
+                    { position: dropPosition },
+                    {
+                        content: `File: ${item.name}`,
+                        fileRef: {
+                            path: item.path,
+                            type: item.fileType,
+                        },
+                    },
+                );
+            }
             setDropPosition(null);
         },
         collect: (monitor) => ({

@@ -33,6 +33,6 @@ export const useDirectoryContents = (path: string) => {
     return useQuery({
         queryKey: ["directory", path],
         queryFn: () => getDirectory(path),
-        enabled: false,
+        enabled: !!path, // Only enable when we have a path
     });
 };

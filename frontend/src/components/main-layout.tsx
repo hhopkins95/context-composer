@@ -4,8 +4,8 @@ import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
-} from "@/components/ui/resizable";
-import { Button } from "@/components/ui/button";
+} from "./ui/resizable";
+import { Button } from "./ui/button";
 import FileExplorer from "./file-explorer";
 import ContextBuilder from "./builder/context-builder";
 
