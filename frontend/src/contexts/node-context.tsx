@@ -1,12 +1,13 @@
 import { createContext, useContext, useState } from "react";
 import { cloneDeep } from "lodash";
+import { render } from "react-dom";
 
 /**
  * TYPES
  */
 export interface ContentNode {
   id: string;
-  type: "text" | "file";
+  type: "text";
   content: string;
   fileRef?: {
     path: string;
@@ -17,7 +18,8 @@ export interface ContentNode {
 export type ContainerFormat =
   | "xml"
   | "md"
-  | "numbered-md";
+  | "numbered-md"
+  | "raw";
 
 export interface ContainerNode {
   id: string;
@@ -41,8 +43,99 @@ export interface InsertTarget {
  * @param nodes The nodes to render.
  * @returns The final string.
  */
-function renderFinalString(nodes: Node[]): string {
-  return "TODO"; // nodes.map((node) => node.content).join("");
+function renderFinalString(
+  nodes: Node[],
+  baseContainerFormat: ContainerFormat = "raw",
+): string {
+  let str = "";
+
+  const getTags = ({
+    name,
+    format,
+    level,
+  }: { name?: string; format: ContainerFormat; level: number[] }): [
+    string,
+    string,
+  ] => {
+    let x = "";
+    switch (format) {
+      case "xml":
+        return [`\n <${name}> \n`, `\n </${name}> \n`];
+      case "md":
+        for (let i = 0; i < level.length; i++) {
+          x += "# ";
+        }
+        return [`\n ${x} ${name}\n`, "\n ___ \n"];
+      case "numbered-md":
+        for (let i = 0; i < level.length; i++) {
+          x += "# ";
+        }
+        let y = "";
+        level.forEach((l, i) => {
+          y += `${l}${i !== level.length - 1 ? ". " : " "}`;
+        });
+        return [`\n ${x} ${y} ${name}\n`, "\n ___ \n"];
+      case "raw":
+        return ["\n", "\n"];
+      default:
+        return ["\n", "\n"];
+    }
+  };
+
+  const renderNodeContainer = (
+    container: ContainerNode,
+    curContainerFormat: ContainerFormat,
+    curLevel: number[] = [],
+  ): string => {
+    let str = "";
+    let level = [...curLevel];
+    const format = container.format === "inherit"
+      ? curContainerFormat
+      : container.format;
+    if (format !== curContainerFormat) {
+      level = [1];
+    }
+
+    const [startTag, endTag] = getTags({
+      name: container.name,
+      format,
+      level: level,
+    });
+    str += startTag;
+
+    let sublevel = 1;
+    container.children.forEach((node) => {
+      if (node.type === "container") {
+        str += renderNodeContainer(node, format, [
+          ...level,
+          sublevel,
+        ]);
+        sublevel++;
+      }
+      if (node.type === "text") {
+        const indent = level.map(() => "   ").join("");
+        str += `${indent}`;
+        str += node.content;
+      }
+    });
+
+    str += endTag;
+
+    return str;
+  };
+
+  let cur = 1;
+  for (const node of nodes) {
+    if (node.type === "text") {
+      str += `\n` + node.content;
+    }
+
+    if (node.type === "container") {
+      str += `\n` + renderNodeContainer(node, baseContainerFormat, [cur]);
+    }
+  }
+
+  return str;
 }
 
 /**
@@ -73,19 +166,6 @@ function deleteNode(nodes: Node[], nodeId: string): Node[] {
   });
 
   return nodes;
-  // let newNodes: Node[] = [];
-  // nodes.forEach((node) => {
-  //   if (node.id !== nodeId) {
-  //     if (node.type == "container") {
-  //       let newChildren: Node[] = deleteNode(node.children, nodeId);
-  //       newNodes.push({ ...node, children: newChildren });
-  //     } else {
-  //       newNodes.push(node);
-  //     }
-  //   }
-  // });
-
-  // return newNodes;
 }
 
 /**
@@ -265,295 +345,6 @@ function usePromptBuilderContextLogic() {
   >("xml");
   const selections = useNodeSelections();
 
-  // // Helper function to generate unique IDs
-  // function generateId(): string {
-  //   return Date.now().toString(36) + Math.random().toString(36).substring(2);
-  // }
-
-  // // Helper function to find a node by ID
-  // function getNode(nodeId: string): Node | null {
-  //   if (rootContainer.id === nodeId) return rootContainer;
-
-  //   function findNode(nodes: Node[]): Node | null {
-  //     for (const node of nodes) {
-  //       if (node.id === nodeId) return node;
-  //       if (node.type === "container") {
-  //         const found = findNode(node.children);
-  //         if (found) return found;
-  //       }
-  //     }
-  //     return null;
-  //   }
-
-  //   return findNode(rootContainer.children);
-  // }
-
-  // // Helper function to find a node's parent
-  // function getParentNode(nodeId: string): ContainerNode | null {
-  //   function findParent(
-  //     nodes: Node[],
-  //     parent: ContainerNode,
-  //   ): ContainerNode | null {
-  //     for (const node of nodes) {
-  //       if (node.id === nodeId) return parent;
-  //       if (node.type === "container") {
-  //         const found = findParent(node.children, node as ContainerNode);
-  //         if (found) return found;
-  //       }
-  //     }
-  //     return null;
-  //   }
-
-  //   return findParent(rootContainer.children, rootContainer);
-  // }
-
-  // // Helper function to check if a node can be inserted at a target
-  // function canInsertAt(node: Node, target: InsertTarget): boolean {
-  //   if (target.id === node.id) return false;
-
-  //   function isDescendant(parent: Node, child: Node): boolean {
-  //     if (parent.type !== "container") return false;
-  //     return parent.children.some((n) =>
-  //       n.id === child.id || (n.type === "container" && isDescendant(n, child))
-  //     );
-  //   }
-
-  //   const targetNode = getNode(target.id);
-  //   return targetNode !== null && !isDescendant(node, targetNode);
-  // }
-
-  // function addNode(parentId: string | null, nodeType: Node["type"]) {
-  //   const newNode: Node = nodeType === "container"
-  //     ? {
-  //       id: generateId(),
-  //       type: "container",
-  //       format: "inherit",
-  //       name: "new-container",
-  //       children: [],
-  //     }
-  //     : {
-  //       id: generateId(),
-  //       type: nodeType,
-  //       content: "",
-  //     };
-
-  //   const target: InsertTarget = {
-  //     id: parentId || rootContainer.id,
-  //     position: "inside",
-  //   };
-
-  //   if (!canInsertAt(newNode, target)) {
-  //     console.error("Invalid insertion target");
-  //     return;
-  //   }
-
-  //   setRootContainer((prev) => {
-  //     const updated = { ...prev };
-  //     const parent = target.id === rootContainer.id
-  //       ? updated
-  //       : getNode(target.id);
-
-  //     if (!parent || parent.type !== "container") {
-  //       console.error("Invalid parent node");
-  //       return prev;
-  //     }
-
-  //     parent.children.push(newNode);
-  //     return updated;
-  //   });
-  // }
-
-  // function updateNode(updatedNode: Node) {
-  //   const node = getNode(updatedNode.id);
-  //   if (!node) {
-  //     console.error("Node not found");
-  //     return;
-  //   }
-
-  //   if (node.type !== updatedNode.type) {
-  //     console.error("Cannot change node type");
-  //     return;
-  //   }
-
-  //   setRootContainer((prev) => {
-  //     const updated = { ...prev };
-  //     const nodeToUpdate = getNode(updatedNode.id);
-  //     if (nodeToUpdate) {
-  //       Object.assign(nodeToUpdate, updatedNode);
-  //     }
-  //     return updated;
-  //   });
-  // }
-
-  // function deleteNode(nodeId: string) {
-  //   if (nodeId === rootContainer.id) {
-  //     console.error("Cannot remove root container");
-  //     return;
-  //   }
-
-  //   setRootContainer((prev) => {
-  //     const updated = { ...prev };
-  //     const parent = getParentNode(nodeId);
-
-  //     if (!parent) {
-  //       console.error("Node not found");
-  //       return prev;
-  //     }
-
-  //     const index = parent.children.findIndex((n) => n.id === nodeId);
-  //     if (index !== -1) {
-  //       parent.children.splice(index, 1);
-  //     }
-
-  //     return updated;
-  //   });
-
-  //   if (selectedNode?.id === nodeId) {
-  //     setSelectedNode(null);
-  //   }
-  // }
-
-  // function moveNode(
-  //   draggedId: string,
-  //   targetId: string,
-  //   position: InsertPosition,
-  // ) {
-  //   const draggedNode = getNode(draggedId);
-  //   if (!draggedNode) {
-  //     console.error("Dragged node not found");
-  //     return;
-  //   }
-
-  //   const target: InsertTarget = { id: targetId, position };
-  //   if (!canInsertAt(draggedNode, target)) {
-  //     console.error("Invalid move target");
-  //     return;
-  //   }
-
-  //   setRootContainer((prev) => {
-  //     const updated = { ...prev };
-
-  //     // Remove node from current position
-  //     const sourceParent = getParentNode(draggedId);
-  //     if (sourceParent) {
-  //       const index = sourceParent.children.findIndex((n) =>
-  //         n.id === draggedId
-  //       );
-  //       if (index !== -1) {
-  //         sourceParent.children.splice(index, 1);
-  //       }
-  //     }
-
-  //     // Insert at new position
-  //     const targetParent = position === "inside"
-  //       ? getNode(targetId)
-  //       : getParentNode(targetId);
-
-  //     if (!targetParent || targetParent.type !== "container") {
-  //       console.error("Invalid target parent");
-  //       return prev;
-  //     }
-
-  //     if (position === "inside") {
-  //       targetParent.children.push(draggedNode);
-  //     } else {
-  //       const targetIndex = targetParent.children.findIndex((n) =>
-  //         n.id === targetId
-  //       );
-  //       const insertIndex = position === "before"
-  //         ? targetIndex
-  //         : targetIndex + 1;
-  //       targetParent.children.splice(insertIndex, 0, draggedNode);
-  //     }
-
-  //     return updated;
-  //   });
-  // }
-
-  // function parseContent(content: string): Node[] {
-  //   const nodes: Node[] = [];
-  //   let currentText = "";
-  //   let i = 0;
-
-  //   while (i < content.length) {
-  //     if (content[i] === "{" && content[i + 1] === "{") {
-  //       if (currentText) {
-  //         nodes.push({
-  //           id: generateId(),
-  //           type: "text",
-  //           content: currentText,
-  //         });
-  //         currentText = "";
-  //       }
-
-  //       const start = i + 2;
-  //       const end = content.indexOf("}}", start);
-  //       if (end === -1) {
-  //         currentText += "{{";
-  //         i += 2;
-  //         continue;
-  //       }
-
-  //       const variableName = content.slice(start, end).trim();
-  //       nodes.push({
-  //         id: generateId(),
-  //         type: "container",
-  //         format: "inherit",
-  //         name: variableName,
-  //         children: [],
-  //       });
-
-  //       i = end + 2;
-  //     } else {
-  //       currentText += content[i];
-  //       i++;
-  //     }
-  //   }
-
-  //   if (currentText) {
-  //     nodes.push({
-  //       id: generateId(),
-  //       type: "text",
-  //       content: currentText,
-  //     });
-  //   }
-
-  //   return nodes;
-  // }
-
-  // function toString(
-  //   nodeId?: string,
-  //   formatContext?: ContainerNode["format"],
-  // ): string {
-  //   const node = nodeId ? getNode(nodeId) : rootContainer;
-  //   if (!node) throw new Error("Node not found");
-
-  //   function nodeToString(node: Node, format: ContainerNode["format"]): string {
-  //     if (node.type !== "container") {
-  //       return node.content;
-  //     }
-
-  //     const nodeFormat = node.format === "inherit" ? format : node.format;
-  //     const childStrings = node.children.map((child) =>
-  //       nodeToString(child, nodeFormat)
-  //     );
-
-  //     switch (nodeFormat) {
-  //       case "xml":
-  //         return `<${node.name}>${childStrings.join("")}</${node.name}>`;
-  //       case "markdown":
-  //         return `${node.name}\n${childStrings.join("\n")}`;
-  //       case "numbered":
-  //         return childStrings.map((str, i) => `${i + 1}. ${str}`).join("\n");
-  //       case "raw":
-  //       default:
-  //         return childStrings.join("");
-  //     }
-  //   }
-
-  //   return nodeToString(node, formatContext || "raw");
-  // }
-
   const value = {
     // nodes: rootContainer.children,
     // selectedNode,
@@ -610,35 +401,46 @@ export function usePromptBuilderContext() {
   return context;
 }
 
+/**
+ * tests
+ */
 const base: ContainerNode = {
   id: "1",
   type: "container",
-  format: "md",
+  format: "xml",
   name: "one",
   children: [
     {
       id: "1-1",
       type: "container",
-      format: "inherit",
-      name: "two",
+      format: "md",
+      name: "1-1 container",
       children: [
         {
           id: "1-1-1",
           type: "text",
-          content: "four",
+          content: "{1-1 content}",
         },
       ],
     },
     {
       id: "1-2",
-      type: "text",
-      content: "three",
+      type: "container",
+      format: "md",
+      name: "1-2 container",
+      children: [
+        {
+          id: "1-1dsfa-1",
+          type: "text",
+          content: "{1-2 content}",
+        },
+      ],
     },
     {
       id: "1-3",
       type: "container",
       format: "inherit",
-      name: "two",
+      name: "1-3 Container",
       children: [],
     },
   ],
@@ -647,7 +449,7 @@ const base2: ContainerNode = {
   id: "2",
   type: "container",
   format: "md",
-  name: "one",
+  name: "two",
   children: [],
 };
 
@@ -660,11 +462,14 @@ const getRandomNode = () => {
 };
 
 const nodes = [base, base2];
-const copy = cloneDeep(nodes); // JSON.parse(JSON.stringify(nodes));
 
-moveNode("1", copy, { position: "after", id: "2" });
+console.log(renderFinalString(nodes, "numbered-md"));
 
-console.log("____________ Original");
-console.log(JSON.stringify(nodes, null, 2));
-console.log("____________ Copy");
-console.log(JSON.stringify(copy, null, 2));
+// const copy = cloneDeep(nodes); // JSON.parse(JSON.stringify(nodes));
+
+// moveNode("1", copy, { position: "after", id: "2" });
+
+// console.log("____________ Original");
+// console.log(JSON.stringify(nodes, null, 2));
+// console.log("____________ Copy");
+// console.log(JSON.stringify(copy, null, 2));
