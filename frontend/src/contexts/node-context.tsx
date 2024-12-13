@@ -307,6 +307,43 @@ function moveNode(
   }
 }
 
+function updateContainerNode(
+  nodes: Node[],
+  node_id: string,
+  values: Partial<ContainerNode>,
+) {
+  const node = getNode(nodes, node_id);
+  if (!node) throw new Error("Node not found");
+  let { node: foundNode, parents } = node;
+  if (foundNode.type !== "container") {
+    throw new Error("Node is not a container");
+  }
+  Object.assign(foundNode, {
+    ...values,
+    id: node_id,
+    children: foundNode.children,
+  });
+  return nodes;
+}
+
+function updateContentNode(
+  nodes: Node[],
+  node_id: string,
+  values: Partial<ContentNode>,
+) {
+  const node = getNode(nodes, node_id);
+  if (!node) throw new Error("Node not found");
+  let { node: foundNode, parents } = node;
+  if (foundNode.type !== "text") {
+    throw new Error("Node is not a text node");
+  }
+  Object.assign(foundNode, {
+    ...values,
+    id: node_id,
+  });
+  return nodes;
+}
+
 /**
  * LOGIC
  */
@@ -347,6 +384,7 @@ function usePromptBuilderContextLogic() {
   const selections = useNodeSelections();
 
   const value = {
+    nodes,
     // nodes: rootContainer.children,
     // selectedNode,
     // collapsedNodes,
@@ -466,18 +504,18 @@ const base2: ContainerNode = {
   name: "two",
   children: [],
 };
-
-const getRandomNode = () => {
-  return {
-    id: crypto.randomUUID(),
-    type: "text",
-    content: "four",
-  } as Node;
-};
-
 const nodes = [base, base2];
 
-console.log(renderFinalString(nodes, "xml"));
+const nodes2 = updateContainerNode(nodes, "1-1", {
+  name: "New Name",
+});
+
+updateContentNode(nodes, "1-1-1", {
+  content: "New Content",
+});
+
+console.log(renderFinalString(nodes2, "xml"));
+// console.log(renderJsonString(nodes));
 
 // const copy = cloneDeep(nodes); // JSON.parse(JSON.stringify(nodes));
 
