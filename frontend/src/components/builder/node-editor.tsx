@@ -1,4 +1,8 @@
-import type { ContainerNode, ContentNode, Node } from "@/contexts/node-context";
+import type {
+  ContainerNode,
+  ContentNode,
+  Node,
+} from "@/contexts/builder-context/node-context";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import {

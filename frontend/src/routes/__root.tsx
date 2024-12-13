@@ -1,7 +1,7 @@
 import * as React from "react";
 import { createRootRoute, Link, Outlet } from "@tanstack/react-router";
 import { TanStackRouterDevtools } from "@tanstack/router-devtools";
-import { PromptBuilderProvider } from "@/contexts/node-context";
+import { PromptBuilderProvider } from "@/contexts/builder-context/node-context";
 
 export const Route = createRootRoute({
   component: RootComponent,

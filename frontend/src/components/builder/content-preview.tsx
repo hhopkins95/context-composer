@@ -2,7 +2,7 @@ import {
   type ContainerNode,
   type Node,
   usePromptBuilderContext,
-} from "@/contexts/node-context";
+} from "@/contexts/builder-context/node-context";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { ChevronDown, ChevronRight } from "lucide-react";

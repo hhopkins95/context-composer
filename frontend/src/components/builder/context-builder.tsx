@@ -11,7 +11,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { usePromptBuilderContext } from "@/contexts/node-context";
+import { usePromptBuilderContext } from "@/contexts/builder-context/node-context";
 
 export default function ContextBuilder() {
   const {
