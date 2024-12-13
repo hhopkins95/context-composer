@@ -65,7 +65,7 @@ function renderFinalString(
         for (let i = 0; i < level.length; i++) {
           x += "# ";
         }
-        return [`\n ${x} ${name}\n`, "\n ___ \n"];
+        return [`\n ${x} ${name} \n`, "\n"];
       case "numbered-md":
         for (let i = 0; i < level.length; i++) {
           x += "# ";
@@ -74,7 +74,7 @@ function renderFinalString(
         level.forEach((l, i) => {
           y += `${l}${i !== level.length - 1 ? ". " : " "}`;
         });
-        return [`\n ${x} ${y} ${name}\n`, "\n ___ \n"];
+        return [`\n ${x} ${y} ${name} \n`, "\n"];
       case "raw":
         return ["\n", "\n"];
       default:
@@ -113,8 +113,8 @@ function renderFinalString(
         sublevel++;
       }
       if (node.type === "text") {
-        const indent = level.map(() => "   ").join("");
-        str += `${indent}`;
+        // const indent = level.map(() => "   ").join("");
+        // str += `${indent}`;
         str += node.content;
       }
     });
@@ -132,6 +132,7 @@ function renderFinalString(
 
     if (node.type === "container") {
       str += `\n` + renderNodeContainer(node, baseContainerFormat, [cur]);
+      cur++;
     }
   }
 
@@ -407,13 +408,13 @@ export function usePromptBuilderContext() {
 const base: ContainerNode = {
   id: "1",
   type: "container",
-  format: "xml",
+  format: "inherit",
   name: "one",
   children: [
     {
       id: "1-1",
       type: "container",
-      format: "md",
+      format: "inherit",
       name: "1-1 container",
       children: [
         {
@@ -421,12 +422,25 @@ const base: ContainerNode = {
           type: "text",
           content: "{1-1 content}",
         },
+        {
+          id: "1-1-2",
+          type: "container",
+          format: "inherit",
+          name: "1-1-2 container",
+          children: [
+            {
+              id: "1-1-2-1",
+              type: "text",
+              content: "{1-1-2 content}",
+            },
+          ],
+        },
       ],
     },
     {
       id: "1-2",
       type: "container",
-      format: "md",
+      format: "inherit",
       name: "1-2 container",
       children: [
         {
@@ -448,7 +462,7 @@ const base: ContainerNode = {
 const base2: ContainerNode = {
   id: "2",
   type: "container",
-  format: "md",
+  format: "inherit",
   name: "two",
   children: [],
 };
@@ -463,7 +477,7 @@ const getRandomNode = () => {
 
 const nodes = [base, base2];
 
-console.log(renderFinalString(nodes, "numbered-md"));
+console.log(renderFinalString(nodes, "xml"));
 
 // const copy = cloneDeep(nodes); // JSON.parse(JSON.stringify(nodes));
 
