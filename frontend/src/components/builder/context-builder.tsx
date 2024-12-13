@@ -1,16 +1,20 @@
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Button } from "../../components/ui/button";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "../../components/ui/tabs";
 import { DndProvider } from "react-dnd";
 import { HTML5Backend } from "react-dnd-html5-backend";
-import TreeView from "./tree-view";
-import NodeEditor from "./node-editor";
+import UnifiedNodeEditor from "./unified-node-editor";
 import ContentPreview from "./content-preview";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea } from "../../components/ui/scroll-area";
 import {
   PromptBuilderProvider,
   usePromptBuilderContext,
-} from "@/contexts/builder-context/node-context";
+} from "../../contexts/builder-context/node-context";
 
 function ContextBuilderContent() {
   const { addContainer, addTextNode, jsonString } = usePromptBuilderContext();
@@ -37,22 +41,12 @@ function ContextBuilderContent() {
                     Add Text Node
                   </Button>
                 </div>
-                <div className="flex gap-4 h-full">
-                  <div className="w-1/2 border rounded-lg shadow-sm bg-card flex flex-col">
-                    <div className="p-4 border-b bg-muted/50">
-                      <h2 className="font-semibold">Node Tree</h2>
-                    </div>
-                    <div className="p-4 flex-1 overflow-auto">
-                      <TreeView />
-                    </div>
+                <div className="border rounded-lg shadow-sm bg-card flex flex-col h-full">
+                  <div className="p-4 border-b bg-muted/50">
+                    <h2 className="font-semibold">Node Editor</h2>
                   </div>
-                  <div className="w-1/2 border rounded-lg shadow-sm bg-card flex flex-col">
-                    <div className="p-4 border-b bg-muted/50">
-                      <h2 className="font-semibold">Node Properties</h2>
-                    </div>
-                    <div className="p-4 flex-1 overflow-auto">
-                      <NodeEditor />
-                    </div>
+                  <div className="p-4 flex-1 overflow-auto">
+                    <UnifiedNodeEditor />
                   </div>
                 </div>
               </div>

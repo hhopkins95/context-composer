@@ -87,11 +87,78 @@ function usePromptBuilderContextLogic() {
   };
 
   const moveNodeTo = (nodeId: string, target: InsertTarget) => {
+    console.log("Attempting to move node in context:", { nodeId, target });
+
+    // Validate source and target nodes before attempting move
     try {
-      setNodes((prev) => moveNode(nodeId, prev, target));
+      // First check if the source node exists
+      const sourceNode = getNode(nodes, nodeId);
+      if (!sourceNode) {
+        console.error("Source node not found:", nodeId);
+        console.log("Current nodes:", nodes);
+        return;
+      }
+
+      // Then check target node if specified
+      if (target.id) {
+        const targetNode = getNode(nodes, target.id);
+        if (!targetNode) {
+          console.error("Target node not found:", target.id);
+          return;
+        }
+
+        // Check if target is a child of the source (prevent invalid moves)
+        const isChild = targetNode.parents.some((parent) =>
+          parent.id === nodeId
+        );
+        if (isChild) {
+          console.error("Cannot move a node into its own child");
+          return;
+        }
+
+        // Log the node hierarchy for debugging
+        console.log("Valid move operation hierarchy:", {
+          source: {
+            id: nodeId,
+            type: sourceNode.node.type,
+            parents: sourceNode.parents.map((p) => ({
+              id: p.id,
+              type: p.type,
+            })),
+          },
+          target: {
+            id: target.id,
+            type: targetNode.node.type,
+            parents: targetNode.parents.map((p) => ({
+              id: p.id,
+              type: p.type,
+            })),
+          },
+        });
+      }
+
+      // If all validation passes, perform the move
+      console.log("Starting node move operation");
+      setNodes((prev) => {
+        try {
+          const result = moveNode(nodeId, prev, target);
+          console.log("Node move completed successfully");
+          return result;
+        } catch (error) {
+          console.error("Move operation failed:", error);
+          return prev; // Keep previous state on error
+        }
+      });
     } catch (error) {
-      console.error("Failed to move node:", error);
-      // Optionally handle error (e.g., show notification)
+      console.error("Failed to validate move operation:", error);
+      if (error instanceof Error) {
+        console.error({
+          message: error.message,
+          stack: error.stack,
+          nodeId,
+          target,
+        });
+      }
     }
   };
 
@@ -125,7 +192,6 @@ function usePromptBuilderContextLogic() {
       setNodes(parsed);
     } catch (error) {
       console.error("Failed to import JSON:", error);
-      // Optionally handle error
     }
   };
 

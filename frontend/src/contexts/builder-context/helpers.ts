@@ -7,18 +7,10 @@ import type {
     Node,
 } from "./types";
 
-// HELPERS
-/**
- * Renders the final string from the nodes.
- * @param nodes The nodes to render.
- * @returns The final string.
- */
 export function renderFinalString(
     nodes: Node[],
     baseContainerFormat: ContainerFormat = "raw",
 ): string {
-    let str = "";
-
     const getTags = ({
         name,
         format,
@@ -30,23 +22,23 @@ export function renderFinalString(
         let x = "";
         switch (format) {
             case "xml":
-                return [`\n <${name}> \n`, `\n </${name}> \n`];
+                return [`\n<${name}>\n`, `\n</${name}>\n`];
             case "md":
                 for (let i = 0; i < level.length; i++) {
                     x += "# ";
                 }
-                return [`\n ${x} ${name} \n`, "\n"];
+                return [`\n${x}${name}\n`, "\n"];
             case "numbered-md":
                 for (let i = 0; i < level.length; i++) {
                     x += "# ";
                 }
                 let y = "";
                 level.forEach((l, i) => {
-                    y += `${l}${i !== level.length - 1 ? ". " : " "}`;
+                    y += `${l}${i !== level.length - 1 ? "." : ""} `;
                 });
-                return [`\n ${x} ${y} ${name} \n`, "\n"];
+                return [`\n${x}${y}${name}\n`, "\n"];
             case "raw":
-                return ["\n", "\n"];
+                return [`\n[${name}]\n`, "\n[/${name}]\n"];
             default:
                 return ["\n", "\n"];
         }
@@ -93,35 +85,25 @@ export function renderFinalString(
     };
 
     let cur = 1;
+    let result = "";
     for (const node of nodes) {
         if (node.type === "text") {
-            str += `\n` + node.content;
+            result += `\n${node.content}`;
         }
 
         if (node.type === "container") {
-            str += `\n` + renderNodeContainer(node, baseContainerFormat, [cur]);
+            result += renderNodeContainer(node, baseContainerFormat, [cur]);
             cur++;
         }
     }
 
-    return str;
+    return result;
 }
 
-/**
- * Renders the JSON string from the nodes. Can be used to save the node tree as a template
- * @param nodes The nodes to render.
- * @returns The JSON string.
- */
 export function renderJsonString(nodes: Node[]): string {
     return JSON.stringify(nodes, null, 2);
 }
 
-/**
- * Deletes a node from a list of nodes.
- * @param nodes The nodes to delete from.
- * @param nodeId The ID of the node to delete.
- * @returns The new list of nodes.
- */
 export function deleteNode(nodes: Node[], nodeId: string): Node[] {
     return nodes.reduce<Node[]>((acc, node) => {
         if (node.id === nodeId) {
@@ -139,19 +121,13 @@ export function deleteNode(nodes: Node[], nodeId: string): Node[] {
     }, []);
 }
 
-/**
- * Finds a node in a list of nodes.
- * @param nodes The nodes to search.
- * @param nodeId The ID of the node to find.
- * @returns The node if found, and a list of all parent nodes beginning with the root, null if not found.
- */
 export function getNode(
     nodes: Node[],
     nodeId: string,
     existingParents: Node[] = [],
 ): { node: Node; parents: Node[] } | null {
     for (const node of nodes) {
-        let parents: Node[] = [...existingParents];
+        const parents = [...existingParents];
         if (node.id === nodeId) {
             return { node, parents };
         }
@@ -165,12 +141,6 @@ export function getNode(
     return null;
 }
 
-/**
- * Finds the parent node of a node in a list of nodes.
- * @param nodes The nodes to search.
- * @param nodeId The ID of the node to find the parent of.
- * @returns The parent node if found, and a list of all parent nodes beginning with the root, null if not found.
- */
 export function getParentNode(
     nodes: Node[],
     nodeId: string,
@@ -186,32 +156,25 @@ export function getParentNode(
     return null;
 }
 
-/**
- * @param nodes
- * @param target
- * @param newNode
- * @returns
- */
 export function insertNode(
     nodes: Node[],
     target: InsertTarget,
     newNode: Node,
 ): Node[] {
-    const { id: target_id, position } = target;
-    if (!target_id) { // entered at the root
+    const { id: targetId, position } = target;
+
+    // Handle root-level insertion
+    if (!targetId) {
         if (position === "before") {
             return [newNode, ...nodes];
-        } else {
-            return [...nodes, newNode];
         }
+        return [...nodes, newNode];
     }
 
-    return nodes.map((node) => {
-        if (node.id === target_id) {
-            if (position === "inside") {
-                if (node.type !== "container") {
-                    throw new Error("Cannot insert inside non-container node");
-                }
+    // Handle nested insertion
+    return nodes.map((node): Node | Node[] => {
+        if (node.id === targetId) {
+            if (position === "inside" && node.type === "container") {
                 return {
                     ...node,
                     children: [...node.children, newNode],
@@ -220,13 +183,17 @@ export function insertNode(
             if (position === "before") {
                 return [newNode, node];
             }
-            return [node, newNode];
+            if (position === "after") {
+                return [node, newNode];
+            }
+            throw new Error("Invalid insert position");
         }
 
         if (node.type === "container") {
+            const newChildren = insertNode(node.children, target, newNode);
             return {
                 ...node,
-                children: insertNode(node.children, target, newNode),
+                children: newChildren.flat(),
             };
         }
 
@@ -234,60 +201,53 @@ export function insertNode(
     }).flat();
 }
 
-/**
- * Moves a node to a new position in the tree.
- *
- * @param node_id The ID of the node to move.
- * @param nodes The list of nodes in the tree.
- * @param target The target position for the node.
- * @returns The updated list of nodes.
- */
 export function moveNode(
-    node_id: string,
+    nodeId: string,
     nodes: Node[],
     target: InsertTarget,
 ): Node[] {
-    const nodeCopy = cloneDeep(getNode(nodes, node_id));
+    const nodeCopy = cloneDeep(getNode(nodes, nodeId));
     if (!nodeCopy) throw new Error("Node not found");
 
-    // Make sure the target is not a child of the node
+    // Check if target is a child of the node being moved
     if (target.id) {
         const targetNode = getNode(nodes, target.id);
-        if (targetNode?.parents) {
-            for (const parent of targetNode.parents) {
-                if (parent.id === node_id) {
-                    throw new Error("Cannot move a node into its own child");
-                }
+        if (targetNode) {
+            const isChild = targetNode.parents.some((parent) =>
+                parent.id === nodeId
+            );
+            if (isChild) {
+                throw new Error("Cannot move a node into its own child");
             }
         }
     }
 
-    const newNodes = deleteNode(nodes, node_id);
+    const newNodes = deleteNode(nodes, nodeId);
     return insertNode(newNodes, target, nodeCopy.node);
 }
 
 export function updateContainerNode(
     nodes: Node[],
-    node_id: string,
+    nodeId: string,
     values: Partial<ContainerNode>,
 ): Node[] {
     return nodes.map((node) => {
-        if (node.id === node_id) {
+        if (node.id === nodeId) {
             if (node.type !== "container") {
                 throw new Error("Node is not a container");
             }
             return {
                 ...node,
                 ...values,
-                type: "container", // Ensure type stays as container
-                children: node.children, // Preserve children
+                type: "container",
+                children: node.children,
             };
         }
 
         if (node.type === "container") {
             return {
                 ...node,
-                children: updateContainerNode(node.children, node_id, values),
+                children: updateContainerNode(node.children, nodeId, values),
             };
         }
 
@@ -297,25 +257,25 @@ export function updateContainerNode(
 
 export function updateContentNode(
     nodes: Node[],
-    node_id: string,
+    nodeId: string,
     values: Partial<ContentNode>,
 ): Node[] {
     return nodes.map((node) => {
-        if (node.id === node_id) {
+        if (node.id === nodeId) {
             if (node.type !== "text") {
                 throw new Error("Node is not a text node");
             }
             return {
                 ...node,
                 ...values,
-                type: "text", // Ensure type stays as text
+                type: "text",
             };
         }
 
         if (node.type === "container") {
             return {
                 ...node,
-                children: updateContentNode(node.children, node_id, values),
+                children: updateContentNode(node.children, nodeId, values),
             };
         }
 
