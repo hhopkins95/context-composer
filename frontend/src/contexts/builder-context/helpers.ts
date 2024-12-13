@@ -83,8 +83,6 @@ export function renderFinalString(
                 sublevel++;
             }
             if (node.type === "text") {
-                // const indent = level.map(() => "   ").join("");
-                // str += `${indent}`;
                 str += node.content;
             }
         });
@@ -125,18 +123,20 @@ export function renderJsonString(nodes: Node[]): string {
  * @returns The new list of nodes.
  */
 export function deleteNode(nodes: Node[], nodeId: string): Node[] {
-    nodes.forEach((node, idx) => {
-        if (node.id == nodeId) {
-            nodes.splice(idx, 1);
-            return;
+    return nodes.reduce<Node[]>((acc, node) => {
+        if (node.id === nodeId) {
+            return acc;
         }
 
-        if (node.type == "container") {
-            deleteNode(node.children, nodeId);
+        if (node.type === "container") {
+            return [...acc, {
+                ...node,
+                children: deleteNode(node.children, nodeId),
+            }];
         }
-    });
 
-    return nodes;
+        return [...acc, node];
+    }, []);
 }
 
 /**
@@ -200,50 +200,40 @@ export function insertNode(
     const { id: target_id, position } = target;
     if (!target_id) { // entered at the root
         if (position === "before") {
-            nodes.unshift(newNode);
+            return [newNode, ...nodes];
         } else {
-            nodes.push(newNode);
+            return [...nodes, newNode];
         }
-        return nodes;
     }
 
-    const target_node = getNode(nodes, target_id);
-    if (!target_node) throw new Error("Target node not found");
-    const { node, parents } = target_node;
-
-    // Handle insertion inside
-    if (position == "inside") {
-        if (node.type !== "container") {
-            throw new Error("Cannot insert inside non-container node");
+    return nodes.map((node) => {
+        if (node.id === target_id) {
+            if (position === "inside") {
+                if (node.type !== "container") {
+                    throw new Error("Cannot insert inside non-container node");
+                }
+                return {
+                    ...node,
+                    children: [...node.children, newNode],
+                };
+            }
+            if (position === "before") {
+                return [newNode, node];
+            }
+            return [node, newNode];
         }
-        node.children.push(newNode);
-        return nodes;
-    }
 
-    // Handle insertion before/after the root
-    if (parents.length === 0) { // Target node is a root node
-        const idx = nodes.indexOf(node);
-        if (position === "before") {
-            nodes.splice(idx, 0, newNode);
-        } else {
-            nodes.splice(idx + 1, 0, newNode);
+        if (node.type === "container") {
+            return {
+                ...node,
+                children: insertNode(node.children, target, newNode),
+            };
         }
-        return nodes;
-    }
 
-    // Handle insertion before/after a non-root node
-    const parent = parents[parents.length - 1];
-    if (parent.type !== "container") {
-        throw new Error("Something went wrong -- should never happen");
-    }
-    const idx = parent.children.indexOf(node);
-    if (position === "before") {
-        parent.children.splice(idx, 0, newNode);
-    } else {
-        parent.children.splice(idx + 1, 0, newNode);
-    }
-    return nodes;
+        return node;
+    }).flat();
 }
+
 /**
  * Moves a node to a new position in the tree.
  *
@@ -272,51 +262,63 @@ export function moveNode(
         }
     }
 
-    nodeCopy.node.id = crypto.randomUUID(); // temp id
-
-    try {
-        insertNode(nodes, target, nodeCopy.node); // insert the copy at the correct place
-        deleteNode(nodes, node_id); // delete the original from the list
-        nodeCopy.node.id = node_id; // change the id back
-        return nodes;
-    } catch (e) {
-        throw e;
-    }
+    const newNodes = deleteNode(nodes, node_id);
+    return insertNode(newNodes, target, nodeCopy.node);
 }
 
 export function updateContainerNode(
     nodes: Node[],
     node_id: string,
     values: Partial<ContainerNode>,
-) {
-    const node = getNode(nodes, node_id);
-    if (!node) throw new Error("Node not found");
-    let { node: foundNode, parents } = node;
-    if (foundNode.type !== "container") {
-        throw new Error("Node is not a container");
-    }
-    Object.assign(foundNode, {
-        ...values,
-        id: node_id,
-        children: foundNode.children,
+): Node[] {
+    return nodes.map((node) => {
+        if (node.id === node_id) {
+            if (node.type !== "container") {
+                throw new Error("Node is not a container");
+            }
+            return {
+                ...node,
+                ...values,
+                type: "container", // Ensure type stays as container
+                children: node.children, // Preserve children
+            };
+        }
+
+        if (node.type === "container") {
+            return {
+                ...node,
+                children: updateContainerNode(node.children, node_id, values),
+            };
+        }
+
+        return node;
     });
-    return nodes;
 }
 
 export function updateContentNode(
     nodes: Node[],
     node_id: string,
     values: Partial<ContentNode>,
-) {
-    const node = getNode(nodes, node_id);
-    if (!node) throw new Error("Node not found");
-    let { node: foundNode, parents } = node;
-    if (foundNode.type !== "text") {
-        throw new Error("Node is not a text node");
-    }
-    Object.assign(foundNode, {
-        ...values,
-        id: node_id,
+): Node[] {
+    return nodes.map((node) => {
+        if (node.id === node_id) {
+            if (node.type !== "text") {
+                throw new Error("Node is not a text node");
+            }
+            return {
+                ...node,
+                ...values,
+                type: "text", // Ensure type stays as text
+            };
+        }
+
+        if (node.type === "container") {
+            return {
+                ...node,
+                children: updateContentNode(node.children, node_id, values),
+            };
+        }
+
+        return node;
     });
-    return nodes;
 }

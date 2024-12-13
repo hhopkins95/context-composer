@@ -160,11 +160,12 @@ function usePromptBuilderContextLogic() {
     importFromJson,
   };
 }
+
 // PROVIDER / EXPORTS
 
 type PromptBuilderContext = ReturnType<typeof usePromptBuilderContextLogic>;
 
-const PromptBuilderContext = createContext<PromptBuilderContext | null>(null!);
+const PromptBuilderContext = createContext<PromptBuilderContext | null>(null);
 
 export const PromptBuilderProvider = (
   { children }: { children: React.ReactNode },

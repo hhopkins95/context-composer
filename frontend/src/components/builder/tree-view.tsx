@@ -8,19 +8,11 @@ import { ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useDrag, useDrop } from "react-dnd";
 import { usePromptBuilderContext } from "@/contexts/builder-context/node-context";
+import { useRef } from "react";
 
-type TreeViewProps = {
-  nodes: Node[];
-  onNodeSelect: (node: Node) => void;
-  onAddChild: (parentId: string, nodeType: Node["type"]) => void;
-  collapsedNodes: Set<string>;
-  onToggleCollapse: (nodeId: string) => void;
-  onDeleteNode: (nodeId: string) => void;
-  onMoveNode: (
-    draggedId: string,
-    targetId: string,
-    position: "before" | "after" | "inside",
-  ) => void;
+type DragItem = {
+  id: string;
+  type: string;
 };
 
 const colors = [
@@ -33,11 +25,6 @@ const colors = [
   "text-indigo-500",
   "text-orange-500",
 ];
-
-type DragItem = {
-  id: string;
-  type: string;
-};
 
 const getNodeIcon = (node: Node) => {
   if (node.type === "container") {
@@ -84,6 +71,7 @@ const NodeTree = ({
   const colorClass = colors[level % colors.length];
   const isCollapsed = !expandedNodeIds.has(node.id);
   const isContainer = node.type === "container";
+  const nodeRef = useRef<HTMLDivElement>(null);
 
   const [{ isDragging }, drag] = useDrag(() => ({
     type: "NODE",
@@ -104,7 +92,7 @@ const NodeTree = ({
       if (draggedId === targetId) return;
 
       const clientOffset = monitor.getClientOffset();
-      const hoverBoundingRect = ref.current?.getBoundingClientRect();
+      const hoverBoundingRect = nodeRef.current?.getBoundingClientRect();
 
       if (!clientOffset || !hoverBoundingRect) return;
 
@@ -126,20 +114,18 @@ const NodeTree = ({
     }),
   }));
 
-  const ref = (element: HTMLDivElement | null) => {
-    drag(element);
-    drop(element);
-  };
+  // Combine drag and drop refs
+  drag(drop(nodeRef));
 
   return (
     <div
-      ref={ref}
+      ref={nodeRef}
       className={`pl-4 ${isDragging ? "opacity-50" : ""} ${
-        isOverCurrent ? "bg-gray-100" : ""
+        isOverCurrent ? "bg-muted/50" : ""
       }`}
     >
       <div
-        className={`flex items-center space-x-2 cursor-pointer hover:bg-gray-100 p-1 rounded ${colorClass}`}
+        className={`flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-2 rounded group ${colorClass}`}
       >
         {isContainer && (
           <Button
@@ -153,41 +139,60 @@ const NodeTree = ({
               : <ChevronDown className="w-4 h-4" />}
           </Button>
         )}
-        <span onClick={() => selectNode(node.id)}>
+        <span
+          onClick={() => selectNode(node.id)}
+          className="flex-grow hover:text-foreground/80"
+        >
           {getNodeIcon(node)} {getNodePreview(node)}
         </span>
-        {isContainer && (
+        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {isContainer && (
+            <>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addContainer({ id: node.id, position: "inside" });
+                }}
+                title="Add Container Node"
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 w-7"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  addTextNode({ id: node.id, position: "inside" });
+                }}
+                title="Add Text Node"
+              >
+                <Plus className="w-4 h-4 text-blue-500" />
+              </Button>
+            </>
+          )}
           <Button
             size="sm"
             variant="ghost"
+            className="h-7 w-7"
             onClick={(e) => {
               e.stopPropagation();
-              addTextNode({ id: node.id, position: "inside" });
+              deleteNode(node.id);
             }}
+            title="Delete Node"
           >
-            <Plus className="w-4 h-4" />
+            <Trash2 className="w-4 h-4 text-red-500" />
           </Button>
-        )}
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={(e) => {
-            e.stopPropagation();
-            deleteNode(node.id);
-          }}
-        >
-          <Trash2 className="w-4 h-4" />
-        </Button>
+        </div>
       </div>
       {isContainer && !isCollapsed &&
         (node as ContainerNode).children.length > 0 && (
         <div className="pl-4">
           {(node as ContainerNode).children.map((childNode) => (
-            <NodeTree
-              key={childNode.id}
-              node={childNode}
-              level={level + 1}
-            />
+            <NodeTree key={childNode.id} node={childNode} level={level + 1} />
           ))}
         </div>
       )}
@@ -199,27 +204,20 @@ export default function TreeView() {
   const { nodes } = usePromptBuilderContext();
 
   return (
-    <div className="p-4">
-      <h3 className="font-semibold mb-2">Node Structure</h3>
-      <ScrollArea className="h-full pr-4">
-        {nodes.length === 0
-          ? (
-            <div className="flex items-center justify-center h-full text-muted-foreground">
-              <p>No nodes created yet</p>
-            </div>
-          )
-          : (
-            <div className="space-y-2">
-              {nodes.map((node) => (
-                <NodeTree
-                  key={node.id}
-                  node={node}
-                  level={0}
-                />
-              ))}
-            </div>
-          )}
-      </ScrollArea>
-    </div>
+    <ScrollArea className="h-full">
+      {nodes.length === 0
+        ? (
+          <div className="flex items-center justify-center h-full text-muted-foreground">
+            <p>No nodes created yet</p>
+          </div>
+        )
+        : (
+          <div className="space-y-2">
+            {nodes.map((node) => (
+              <NodeTree key={node.id} node={node} level={0} />
+            ))}
+          </div>
+        )}
+    </ScrollArea>
   );
 }
