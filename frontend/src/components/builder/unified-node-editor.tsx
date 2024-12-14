@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type {
     ContainerNode,
     ContentNode,
+    InsertTarget,
     Node,
 } from "../../contexts/builder-context/types";
 import { Button } from "../../components/ui/button";
@@ -23,7 +24,9 @@ import {
     SelectValue,
 } from "../../components/ui/select";
 import { Textarea } from "../../components/ui/textarea";
+import { api } from "../../lib/api";
 
+// Types remain the same...
 type NodeDragItem = {
     id: string;
     type: "NODE";
@@ -50,6 +53,68 @@ const nodeStyles = {
     content: "bg-slate-50/50 border-slate-200 hover:bg-slate-100/50",
 };
 
+// Helper function to handle file drops
+async function handleFileDrop(
+    item: FileDragItem,
+    target: InsertTarget,
+    addContainer: (target: InsertTarget) => void,
+    addTextNode: (
+        target: InsertTarget,
+        initialContent?: Partial<ContentNode>,
+    ) => void,
+    updateContainer: (nodeId: string, values: Partial<ContainerNode>) => void,
+    findLastAddedNode: () => Node | undefined,
+    selectedDirectory: string,
+) {
+    // Create a container node for the file
+    const containerTarget = { ...target };
+    addContainer(containerTarget);
+
+    // Get the ID of the newly created container
+    const newNode = findLastAddedNode();
+    if (!newNode) {
+        console.error("Failed to find newly created container node");
+        return;
+    }
+
+    // Update the container's name to the relative path
+    updateContainer(newNode.id, { name: item.path });
+
+    try {
+        // Get the file contents using the correct API endpoint with the full path
+        const fullPath = `${selectedDirectory}/${item.path}`;
+        const response = await (await api.api.file.$get({
+            query: { path: fullPath },
+        })).json();
+
+        // Create a text node with the file contents as a child of the container
+        addTextNode(
+            { id: newNode.id, position: "inside" },
+            {
+                content: response.fileContent,
+                fileRef: {
+                    path: item.path, // Keep the relative path in the fileRef
+                    type: item.fileType,
+                },
+            },
+        );
+    } catch (error) {
+        console.error("Failed to read file:", error);
+        // If file read fails, at least show the file name
+        addTextNode(
+            { id: newNode.id, position: "inside" },
+            {
+                content: `Failed to read file: ${item.name}`,
+                fileRef: {
+                    path: item.path,
+                    type: item.fileType,
+                },
+            },
+        );
+    }
+}
+
+// Rest of the file remains unchanged...
 interface NodeSettingsProps {
     node: ContainerNode;
     onClose: () => void;
@@ -202,7 +267,7 @@ const NodeItem = ({
                 setDropPosition(newPosition);
             }
         },
-        drop: (item: DragItem, monitor) => {
+        drop: async (item: DragItem, monitor) => {
             if (!monitor.isOver({ shallow: true })) {
                 return;
             }
@@ -213,19 +278,17 @@ const NodeItem = ({
                     position: dropPosition || "after",
                 });
             } else if (item.type === "FILE") {
-                // Create a new content node with file reference
-                addTextNode(
+                await handleFileDrop(
+                    item,
                     {
                         id: node.id,
                         position: dropPosition || "after",
                     },
-                    {
-                        content: `File: ${item.name}`,
-                        fileRef: {
-                            path: item.path,
-                            type: item.fileType,
-                        },
-                    },
+                    addContainer,
+                    addTextNode,
+                    updateContainer,
+                    () => allNodes[allNodes.length - 1],
+                    localStorage.getItem("explorer-selected-directory") || "",
                 );
             }
 
@@ -237,7 +300,7 @@ const NodeItem = ({
         }),
     }), [node.id, dropPosition, allNodes]);
 
-    // Combine drag and drop refs
+    // Rest of NodeItem component remains exactly the same...
     drag(drop(nodeRef));
 
     const handleDoubleClick = () => {
@@ -433,7 +496,8 @@ const NodeItem = ({
 };
 
 export default function UnifiedNodeEditor() {
-    const { nodes, addTextNode, moveNode } = usePromptBuilderContext();
+    const { nodes, addContainer, addTextNode, moveNode, updateContainer } =
+        usePromptBuilderContext();
     const [dropPosition, setDropPosition] = useState<"before" | "after" | null>(
         null,
     );
@@ -464,23 +528,21 @@ export default function UnifiedNodeEditor() {
 
             setDropPosition(newPosition);
         },
-        drop: (item: DragItem, monitor) => {
+        drop: async (item: DragItem, monitor) => {
             if (!dropPosition) return;
 
             if (item.type === "NODE") {
                 // Move to root level (no target id)
                 moveNode(item.id, { position: dropPosition });
             } else if (item.type === "FILE") {
-                // Create a new content node with file reference at root level
-                addTextNode(
+                await handleFileDrop(
+                    item,
                     { position: dropPosition },
-                    {
-                        content: `File: ${item.name}`,
-                        fileRef: {
-                            path: item.path,
-                            type: item.fileType,
-                        },
-                    },
+                    addContainer,
+                    addTextNode,
+                    updateContainer,
+                    () => nodes[nodes.length - 1],
+                    localStorage.getItem("explorer-selected-directory") || "",
                 );
             }
             setDropPosition(null);
@@ -488,7 +550,7 @@ export default function UnifiedNodeEditor() {
         collect: (monitor) => ({
             isOver: !!monitor.isOver(),
         }),
-    }), [dropPosition]);
+    }), [dropPosition, nodes]);
 
     drop(rootRef);
 

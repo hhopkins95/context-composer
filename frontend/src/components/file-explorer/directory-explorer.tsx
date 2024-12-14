@@ -198,11 +198,17 @@ function transformToTree(
 function DraggableFile(
   { value, children }: { value: string; children: React.ReactNode },
 ) {
+  // Get the relative path by removing the base directory path
+  const getRelativePath = (fullPath: string) => {
+    const basePath = value.split("/").slice(0, -1).join("/");
+    return fullPath.replace(basePath + "/", "");
+  };
+
   const [{ isDragging }, drag] = useDrag(() => ({
     type: "FILE",
     item: {
       type: "FILE",
-      path: value,
+      path: getRelativePath(value),
       name: value.split("/").pop() || value,
       fileType: value.split(".").pop() || "txt",
     },
