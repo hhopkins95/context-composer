@@ -55,7 +55,7 @@ function usePromptBuilderContextLogic() {
   const [nodes, setNodes] = useState<Node[]>([]);
   const [defaultContainerFormat, setDefaultContainerFormat] = useState<
     ContainerFormat
-  >("raw");
+  >("xml");
   const selections = useNodeSelections();
 
   // Node Management
