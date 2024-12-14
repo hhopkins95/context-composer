@@ -209,11 +209,6 @@ const NodeItem = ({
     const [{ isDragging }, drag] = useDrag(() => ({
         type: "NODE",
         item: () => {
-            console.log("Starting drag for node:", {
-                id: node.id,
-                type: "NODE",
-                exists: !!allNodes.find((n) => n.id === node.id),
-            });
             return { id: node.id, type: "NODE" };
         },
         collect: (monitor) => ({
